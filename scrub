@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+# Removes (recursively) all those annoying .DS_Store turds/files that Mac OS X drops everywhere.
+# Accepts multiple directory arguments. If none given, will default to the current directory.
+
+if [ $# -eq 0 ]; then
+  args=( "." )
+else
+  args=( "$@" )
+fi
+
+for dir in "${args[@]}"; do
+  echo "Scrubbing path: [${dir}]"
+  find "$dir" -type f -name .DS_Store -print -delete || :
+done
+

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+# Launches a clean, sandboxed Firefox instance in private mode with a throwaway profile
+
+# Path to Firefox executable
+firefox="/Applications/Firefox.app/Contents/MacOS/firefox"
+
+profile="$(mktemp -d ${TMPDIR}/tmpfirefox.XXXXXX)"
+
+# turn off auto-update and default browser check
+cat <<-PREFS > "${profile}/prefs.js"
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("app.update.auto", false);
+user_pref("app.update.enabled", false);
+PREFS
+
+"$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
