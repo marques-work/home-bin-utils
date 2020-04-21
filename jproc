@@ -1,0 +1,67 @@
+#!/bin/bash
+
+set -e
+
+function javaProcsFor() {
+  local filter="$1"
+
+  if [ $# -gt 0 -o -n "$filter" ]; then
+    ps -eo pid,command | grep [j]ava | grep -e "$filter" --color
+  else
+    ps -eo pid,command | grep [j]ava
+  fi
+}
+
+function main() {
+  local filter=""
+  local detail=""
+  local stopflags=""
+
+  if [ $# -ne 0 ]; then
+    while (( "$#" )); do
+      case "$1" in
+        -*)
+          if [ -n "$stopflags" ]; then
+            if [ -n "$filter" ]; then
+              die "You can only specify 1 filter at most"
+            fi
+            filter="$1"
+          else
+            case "$1" in
+              --)
+                stopflags="yes"
+                ;;
+              -l|--long)
+                detail="yes"
+                ;;
+              *)
+                die "Unknown flag: \`$1\`\n\nUsage: $(basename $0) [-l||--long] [pattern]"
+                ;;
+             esac
+          fi
+          shift 1
+          ;;
+        *)
+          if [ -n "$filter" ]; then
+            die "You can only specify 1 filter at most"
+          fi
+          filter="$1"
+          shift 1
+          ;;
+      esac
+    done
+  fi
+
+  if [ "yes" = "$detail" ]; then
+    javaProcsFor "$filter"
+  else
+    javaProcsFor "$filter" | awk '{print $1}'
+  fi
+}
+
+function die() {
+  printf "$*\n" >&2
+  exit 1
+}
+
+main $@
