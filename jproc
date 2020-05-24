@@ -47,8 +47,11 @@ function main() {
               -9|--murder)
                 murder="yes"
                 ;;
+              -h|--help)
+                usage
+                ;;
               *)
-                die "Unknown flag: \`$1\`\n\nUsage: $(basename $0) [-l||--long] [pattern]"
+                usage "Unknown flag: \`$1\`"
                 ;;
              esac
           fi
@@ -84,8 +87,25 @@ function main() {
   fi
 }
 
-function die() {
+function usage() {
+  local progname="$(basename $0)"
+  local error="$*"
+
+  if [ -n "$error" ]; then
+    warn "\n$error\n"
+  else
+    warn "\n$progname: A utility to list, filter by pattern, and terminate Java process IDs (PIDs).\n"
+  fi
+
+  die "Usage:\n\n  $progname [-l||--long] [-k|--kill] [-9|--murder] [-h|--help] [pattern]\n"
+}
+
+function warn() {
   printf "$*\n" >&2
+}
+
+function die() {
+  warn $*
   exit 1
 }
 
