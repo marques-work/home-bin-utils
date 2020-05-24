@@ -5,17 +5,24 @@ set -e
 function javaProcsFor() {
   local filter="$1"
 
-  if [ $# -gt 0 -o -n "$filter" ]; then
-    ps -eo pid,command | grep [j]ava | grep -e "$filter" --color
+  if [ -n "$filter" ]; then
+    ps -eo pid,command | grep [j]ava | GREP_COLOR="01;35" grep -e "$filter" --color=always
   else
     ps -eo pid,command | grep [j]ava
   fi
 }
 
+function colorpids() {
+  GREP_COLOR="01;32" grep -e "^[0-9]\+" --color=always
+}
+
 function main() {
-  local filter=""
-  local detail=""
-  local stopflags=""
+  local filter
+  local detail
+  local stopflags
+  local die_asking_nicely
+  local murder
+  local killflag="-TERM"
 
   if [ $# -ne 0 ]; then
     while (( "$#" )); do
@@ -33,6 +40,12 @@ function main() {
                 ;;
               -l|--long)
                 detail="yes"
+                ;;
+              -k|--kill)
+                die_asking_nicely="yes"
+                ;;
+              -9|--murder)
+                murder="yes"
                 ;;
               *)
                 die "Unknown flag: \`$1\`\n\nUsage: $(basename $0) [-l||--long] [pattern]"
@@ -52,10 +65,22 @@ function main() {
     done
   fi
 
+  if [ "yes" = "$die_asking_nicely" -o "yes" = "$murder" ]; then
+    if [ "yes" = "$murder" ]; then
+      killflag="-KILL"
+    fi
+
+    local signal="$(printf "%s" "$killflag" | sed -e 's/^-/SIG/')"
+
+    javaProcsFor "$filter" | tee >(awk '{print $1}' | xargs kill $killflag) >(awk "{print \"\033[1;31mSent $signal ->\033[1;36m\", \$1, \"\033[0m\"}" >&2) | colorpids
+
+    return
+  fi
+
   if [ "yes" = "$detail" ]; then
-    javaProcsFor "$filter"
+    javaProcsFor "$filter" | colorpids
   else
-    javaProcsFor "$filter" | awk '{print $1}'
+    javaProcsFor "$filter" | awk '{print $1}' | colorpids
   fi
 }
 
