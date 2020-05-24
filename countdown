@@ -1,0 +1,108 @@
+#!/bin/bash
+
+set -e
+
+function timer() {
+  local from="$1"
+  local style="$2"
+
+  for i in $(seq $from 1); do
+    tick "$1" "$style"
+    sleep 1
+  done
+
+  ding "$style"
+}
+
+function tick() {
+  local num="$1"
+  local style="$2"
+
+  if [ "dot" = "$style" ]; then
+    printf "."
+  else
+    printf "$i\n"
+  fi
+}
+
+function ding() {
+  local style="$1"
+
+  if [ "dot" = "$style" ]; then
+    # do nothing
+    :
+  else
+    printf "Fire!\n"
+  fi
+}
+
+function assertNonNegativeInteger() {
+  if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+    warn "Value must be a non-negative integer!"
+    usage
+  fi
+}
+
+function usage() {
+ cat <<-USAGE >&2
+
+Usage: $(basename $0) [options] <from>
+
+Description:
+
+Provides a visual countdown to the terminal. \`from\` must be a non-negative integer.
+
+Options:
+
+  --dot    Set the style of the countdown to a series of dots
+
+USAGE
+  exit 1
+}
+
+function warn() {
+  printf "$*\n" >&2
+}
+
+function main() {
+  local args=()
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --)
+        shift 1
+        args+=($*)
+        break
+        ;;
+      --dot)
+        local style="dot"
+        shift 1
+        ;;
+      -*)
+        warn "Unknown option $1"
+        usage
+        ;;
+      *)
+        args+=( "$1" )
+        shift 1
+        ;;
+    esac
+  done
+
+  if [ "${#args[@]}" -ne 1 ]; then
+    usage
+  fi
+
+  local from="${args[0]}"
+
+  assertNonNegativeInteger "$from"
+
+  if [ "$from" -gt 0 ]; then
+    timer "$from" "${style:-""}"
+  else
+    ding
+  fi
+}
+
+main $@
+
