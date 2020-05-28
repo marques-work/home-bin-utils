@@ -13,7 +13,7 @@ function javaProcsFor() {
 }
 
 function colorpids() {
-  GREP_COLOR="01;32" grep -e "^[0-9]\+" --color=always
+  GREP_COLOR="01;32" grep -e "^[ ]*[0-9]\+" --color=always
 }
 
 function main() {
