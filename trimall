@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# recursively trims trailing whitespace from text files (i.e. files with ASCII charset)
+# takes an optional subdirectory argument
+find ${1:-.} -not \( -name .git -prune \) -type f -print0 | xargs -0 file -In | grep 'charset=us-ascii$' | cut -d ":" -f1 | while read f; do sed -i '' -E "s/[[:blank:]]+$//" "$f"; done
