@@ -43,7 +43,7 @@ def parse_args
   options = {aac: "libfdk_aac"}
 
   OptionParser.new do |opts|
-    opts.banner = "Usage: #{PROGNAME} [options]"
+    opts.banner = "Usage: #{PROGNAME} [options] [files...]\n\nIf no files are specified, #{PROGNAME} looks for files in the current directory.\n\nOptions:\n\n"
 
     opts.on("-r", "--recursive", "Recursively convert files to AAC. Only applies when directory is specified.") do
       options[:recurse] = true
