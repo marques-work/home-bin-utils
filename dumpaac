@@ -11,21 +11,21 @@ def main
   options = parse_args
   args = ARGV
 
-  check_prerequisites!
+  check_prerequisites! options
 
   files = find_files(args, options)
 
   raise "No matching audio files found. \`#{PROGNAME}\` accepts files of types: ogg, flac, aac, mp1, mp2, mp3, mp4, m4a, and wav" if files.empty?
 
-  p "Processing #{files.size} files..."
+  puts "Processing #{files.size} files..."
 
   files.each do |source|
-    unless system(%Q{ffmpeg -i #{Shellwords.escape(source)} -vn -c:a #{options[:aac]} -vbr 5 #{Shellwords.escape(destfile(source, options))}})
+    unless system(transcode_command(source, options).tap { |s| puts s })
       raise "Failed to transcode #{source.inspect}!"
     end
   end
 
-  p "Done."
+  puts "Done."
 end
 
 def destfile(file, options)
@@ -40,7 +40,7 @@ def destfile(file, options)
 end
 
 def parse_args
-  options = {aac: "libfdk_aac"}
+  options = { aac: "libfdk_aac" }
 
   OptionParser.new do |opts|
     opts.banner = "Usage: #{PROGNAME} [options] [files...]\n\nIf no files are specified, #{PROGNAME} looks for files in the current directory.\n\nOptions:\n\n"
@@ -49,8 +49,20 @@ def parse_args
       options[:recurse] = true
     end
 
+    opts.on("-l QUALITY", "--vbr=QUALITY", "Specify VBR target quality (range depends on codec); this is the default mode (at max quality for codec).\n\t\t\t\t\tOverrides any preceding \`--cbr\` or \`--vbr\` value.") do |level|
+      options[:rate] = { type: "vbr", value: level }
+    end
+
+    opts.on("-b RATE", "--cbr=RATE", "Specify CBR rate. Accepts any rate supported by the encoder (\`ffmpeg\` or Apple's \`afconvert\`).\n\t\t\t\t\tOverrides any preceding \`--cbr\` or \`--vbr\` value.") do |rate|
+      options[:rate] = { type: "cbr", value: rate }
+    end
+
     opts.on("-N", "--native-aac", "Use the native ffmpeg AAC lib instead of Fraunhofer AAC (e.g., \`ffmpeg\` was not compiled with fdk-aac).") do
       options[:aac] = "aac"
+    end
+
+    opts.on("-A", "--apple-aac", "Use the Apple AAC lib. This will not require an \`ffmpeg\` installation. Obviously, for MacOS only.\n\t\t\t\t\tNote that media tags and other metadata will not be transferred to the output file; \`afconvert\`\n\t\t\t\t\tignores these.") do
+      options[:aac] = "apple"
     end
 
     opts.on("-D DIR", "--dest-dir=DIR", "Dump files to specified directory; if not specified, files are created alongside the originals.") do |dir|
@@ -77,8 +89,37 @@ def subdir_entries(path)
   Dir.entries(path).select { |e| !%w(. ..).include?(e) }.map { |e| File.join(path, e) }
 end
 
-def check_prerequisites!
-  raise "This program requires \`ffmpeg\`; please install this package and ensure it is on your PATH before running \`#{PROGNAME}\`." unless has_ffmpeg?
+def transcode_command(source, options)
+  "apple" == options[:aac] ?
+    "afconvert -v -f m4af -d aac #{rate(options)} #{Shellwords.escape(source)} #{Shellwords.escape(destfile(source, options))}" :
+    "ffmpeg -i #{Shellwords.escape(source)} -vn -c:a #{options[:aac]} #{rate(options)} #{Shellwords.escape(destfile(source, options))}"
+end
+
+def rate(options)
+  return afconvert_rate(options) if "apple" == options[:aac]
+
+  return "libfdk_aac" == options[:aac] ? "-vbr 5" : "-q:a 2" if options[:rate].nil?
+
+  return "-b:a #{options[:rate][:value]}" if "cbr" == options[:rate][:type]
+
+  "#{"libfdk_aac" == options[:aac] ? "-vbr" : "-q:a"} #{options[:rate][:value]}"
+end
+
+def afconvert_rate(options)
+  return "-s 2 -q 127 -ue vbrq 127 -b 256000" if options[:rate].nil?
+
+  return "-s 0 -q 127 -b #{options[:rate][:value]}" if "cbr" == options[:rate][:type]
+
+  "-s 2 -q #{options[:rate][:value]} -ue vbrq #{options[:rate][:value]} -b 256000"
+end
+
+def check_prerequisites!(options)
+  if "apple" == options[:aac]
+    raise "You can only use \`--apple-aac\` on MacOS" unless is_macos?
+    raise "This program requires \`afconvert\`, which is a built-in tool for MacOS, but cannot be resolved; check your PATH" unless system("command -v afconvert &> /dev/null")
+  else
+    raise "This program requires \`ffmpeg\`; please install this package and ensure it is on your PATH before running \`#{PROGNAME}\`." unless has_ffmpeg?
+  end
 end
 
 def has_ffmpeg?
@@ -91,6 +132,10 @@ def is_windows?
 rescue
   # For Ruby <= 2.4.0; has side effects :(
   !!(/mswin|mingw|cygwin/ =~ RbConfig::CONFIG["host_os"])
+end
+
+def is_macos?
+  RbConfig::CONFIG["host_os"].start_with? "darwin"
 end
 
 main if __FILE__ == $PROGRAM_NAME
