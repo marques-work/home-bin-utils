@@ -93,4 +93,4 @@ rescue
   !!(/mswin|mingw|cygwin/ =~ RbConfig::CONFIG["host_os"])
 end
 
-main
+main if __FILE__ == $PROGRAM_NAME
