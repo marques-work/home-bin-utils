@@ -7,4 +7,12 @@ set -e
 # Path to Chrome executable
 chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-"$chrome" --user-data-dir="$(mktemp -d ${TMPDIR}/chrome.XXXXXX)" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0
+if [ "-d" != "$1" ]; then
+  if [ -n "$1" ]; then
+    echo "Unknown argument: $1" >&2
+  fi
+
+  "$chrome" --user-data-dir="$(mktemp -d ${TMPDIR}/chrome.XXXXXX)" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0
+else
+  > /dev/null nohup -- "$chrome" --user-data-dir="$(mktemp -d ${TMPDIR}/chrome.XXXXXX)" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0 &
+fi

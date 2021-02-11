@@ -16,4 +16,12 @@ user_pref("app.update.auto", false);
 user_pref("app.update.enabled", false);
 PREFS
 
-"$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
+if [ "-d" != "$1" ]; then
+  if [ -n "$1" ]; then
+    echo "Unknown argument: $1" >&2
+  fi
+
+  "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
+else
+  > /dev/null nohup -- "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches &
+fi
