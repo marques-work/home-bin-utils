@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Don't use awk to print \0 because BSD awk won't print these.
+# Instead, use `tr` to output nul-delimited records. Alternatively,
+# we could enforce GNU Awk, where this does work, but using `cut`
+# and `tr` makes this more cross-platform with no extra dependencies
+find . -path ./.git -prune -false -o -type f -print0 | \
+  xargs -0 file --mime | \
+  awk '/^[^:]+:[ ]+text\// { print $1 }' | \
+  cut -d ':' -f1 | tr "\n" "\0" | \
+  xargs -0 sed -E -i '' 's/[[:blank:]]+$//'
