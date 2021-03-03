@@ -5,4 +5,4 @@ set -e
 # Sometimes, you don't care about host key checking (e.g., when using -L or -R tunnels),
 # so this is just a convenience wrapper over ssh so I don't f*ck up (also, I'm lazy).
 
-<&0 ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" $@
+<&0 TERM=xterm-256color ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" $@
