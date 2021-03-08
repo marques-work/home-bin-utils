@@ -1,0 +1,68 @@
+#!/bin/bash
+
+set -e
+
+function main {
+  local shutup;
+
+  prereq ffmpeg
+
+  for arg in $@; do
+    case "$arg" in
+      -s|--no-warn)
+        shutup="1"
+	shift 1
+	;;
+      -h|--help)
+	usage
+	shift 1
+	;;
+      -*)
+        die "Don't know how to handle flag: $arg"
+	shift 1
+	;;
+    esac
+  done
+
+  if [ $# -ne 2 ]; then
+    usage
+  fi
+
+  if [ -z "$shutup" ]; then
+    printf "\033[37;41mDon't forget to quote your URL -- often it has characters that will otherwise be interpreted by the shell!\033[0m\n" "" >&2
+  fi
+
+  ffmpeg -i "$1" -c copy "$2"
+}
+
+function prereq {
+  for bin in $@; do
+    if ! command -v "$bin" &> /dev/null; then
+      die "'$bin' not found in PATH; please install this first."
+    fi
+  done
+}
+
+function usage {
+  cat <<-USAGE >&2
+Usage: $(basename $0) - Download an HLS stream to a file
+
+Synopsis
+
+$(basename $0) [options] "<URL>" <destfile>
+
+Options
+
+-s, --no-warn    # Do not print reminder to quote URL arguments
+-h, --help       # Print this help message and exit
+
+USAGE
+  exit 1
+}
+
+function die {
+  printf "%s\n" "$*" >&2
+  exit 1
+}
+
+main $@
