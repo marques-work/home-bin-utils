@@ -5,9 +5,9 @@ set -e
 # Launches a clean, sandboxed Firefox instance in private mode with a throwaway profile
 
 # Path to Firefox executable
-firefox="/Applications/Firefox.app/Contents/MacOS/firefox"
+firefox="$(command -v firefox 2> /dev/null || echo "/Applications/Firefox.app/Contents/MacOS/firefox")"
 
-profile="$(mktemp -d ${TMPDIR}/tmpfirefox.XXXXXX)"
+profile="$(mktemp -d ${TMPDIR:-/tmp}/firefox.XXXXXX)"
 
 # turn off auto-update and default browser check
 cat <<-PREFS > "${profile}/prefs.js"
