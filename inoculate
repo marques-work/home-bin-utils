@@ -1,0 +1,136 @@
+#!/bin/bash
+
+set -eou pipefail
+
+function main {
+  check_macos
+
+  local launch="no"
+
+  declare -a args
+
+  for arg in "$@"; do
+    case "$arg" in
+      -l|--launch)
+        launch="yes"
+        shift 1
+        ;;
+      -h|--help)
+        usage
+        ;;
+      -*)
+        usage "Unknown flag: $arg"
+        ;;
+      *)
+        args+=("$arg")
+        shift 1
+        ;;
+    esac
+  done
+
+  set -- ${args[@]+"${args[@]}"}
+
+  check_sudo
+
+  if [ $# -lt 1 ]; then
+    usage "You must specify at least 1 application to inocculate"
+  fi
+
+  exempt "$@"
+  dequarantine "$@"
+
+  if [ "yes" = "$launch" ]; then
+    launch "$@"
+  fi
+
+  info "Happy hacking!"
+}
+
+function exempt {
+  info "Ensuring gatekeeper exception(s)"
+
+  for app in "$@"; do
+    spctl --remove "$app" || :
+    spctl --add --label Approved "$app"
+
+    info "  - $app"
+  done
+
+  spctl --enable --label Approved
+  info "Enabled."
+}
+
+function dequarantine {
+  info "Removing quarantine(s)"
+
+  for app in "$@"; do
+    xattr -r -d com.apple.quarantine "$app"
+    info "  - $app"
+  done
+
+  info "Dequarantined."
+}
+
+function launch {
+  for app in "$@"; do
+    info "Launching $app"
+
+    if [ -d "$app" ] && echo "$app" | grep -q '.app\(/\?\)$'; then
+      open "$app"
+    else
+      # exec instead of "open"
+      chmod a+rx "$app"
+      "$app"
+    fi
+  done
+}
+
+function check_sudo {
+  if [ 0 -ne "${EUID:-501}" ]; then
+    die "I need to be run with \`sudo\`, genius!"
+  fi
+}
+
+function check_macos {
+  if ! uname | grep -qi 'darwin$'; then
+    die "Sigh, this is only for MacOS. smh."
+  fi
+}
+
+function usage {
+  if [ $# -ne 0 ]; then
+    err "$*"
+  fi
+
+  cat <<-USAGE
+Usage: $(basename "$0") [ OPTIONS ] /path/to/app [ /path/to/other/apps ... ]
+
+NOTE: ** You need to run this with \`sudo\` **
+
+Description: "blesses" a newly installed application to be opened without needing to
+             go to the Security/Privacy control panel to hit "Open Anyway"
+
+Options:
+
+  -l, --launch  Launch the app after unblocking it
+  -h, --help    Show this help and exit
+USAGE
+
+  exit 1
+}
+
+function die {
+  >&2 printf "\e[31;1m[FATAL] %s\e[0m\n" "$*"
+  exit 1
+}
+
+function err {
+  >&2 printf "\e[31;1m[ERROR] %s\e[0m\n" "$*"
+}
+
+function info {
+  printf "\e[32;1m[INFO] %s\e[0m\n" "$*"
+}
+
+# remove any trailing slashes
+main "${@%/}"
