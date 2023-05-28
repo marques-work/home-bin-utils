@@ -1,27 +1,70 @@
 #!/bin/bash
+# vim: sts=2 sw=2 et
 
-set -e
+set -euo pipefail
 
 # Launches a clean, sandboxed Firefox instance in private mode with a throwaway profile
 
-# Path to Firefox executable
-firefox="$(command -v firefox 2> /dev/null || echo "/Applications/Firefox.app/Contents/MacOS/firefox")"
+function main {
+  local detached='no'
+  local profile=''
 
-profile="$(mktemp -d ${TMPDIR:-/tmp}/firefox.XXXXXX)"
+  while [ $# -ne 0 ]; do
+    case "$1" in
+      -d|--detached|--daemon)
+        detached='yes'
+        ;;
+      -p|--profile|--profile=*)
+        if [[ "$1" =~ ^--profile= ]]; then
+          profile="${1#--profile=}"
+        else
+          profile="$2"
+          shift 1
+        fi
 
-# turn off auto-update and default browser check
-cat <<-PREFS > "${profile}/prefs.js"
+        mkdir -p "$profile"
+        info "Using explicit profile: $profile"
+        ;;
+      -*)
+        warn "Ignoring unknown flag: $1"
+        ;;
+      *)
+        warn "Ignoring unknown arg: $1"
+        ;;
+    esac
+    shift 1
+  done
+
+  # Path to Firefox executable
+  # shellcheck disable=SC2155
+  local firefox="$(command -v firefox 2> /dev/null || printf '/Applications/Firefox.app/Contents/MacOS/firefox')"
+
+  if [ -z "$profile" ]; then
+    profile="$(mktemp -d "${TMPDIR:-/tmp}"/firefox.XXXXXX)"
+  fi
+
+  if [ ! -f "$profile/prefs.js" ]; then
+    # turn off auto-update and default browser check
+    cat <<-PREFS > "$profile/prefs.js"
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("app.update.auto", false);
 user_pref("app.update.enabled", false);
 PREFS
-
-if [ "-d" != "$1" ]; then
-  if [ -n "$1" ]; then
-    echo "Unknown argument: $1" >&2
   fi
 
-  "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
-else
-  > /dev/null nohup -- "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches &
-fi
+  if [ 'yes' = "$detached" ]; then
+    > /dev/null nohup -- "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches &
+  else
+    "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
+  fi
+}
+
+function info() {
+  >&2 printf '\e[32;1m[INFO ] %s\e[0m\n' "$*"
+}
+
+function warn() {
+  >&2 printf '\e[34;1m[WARN ] %s\e[0m\n' "$*"
+}
+
+main "$@"
