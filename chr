@@ -1,18 +1,71 @@
 #!/bin/bash
+# vim: sts=2 sw=2 et
 
-set -e
+set -euo pipefail
 
 # Launches a clean, sandboxed Chrome instance in incognito mode with a throwaway profile
 
-# Path to Chrome executable
-chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+function main {
+  local detached='no'
+  local profile=''
 
-if [ "-d" != "$1" ]; then
-  if [ -n "$1" ]; then
-    echo "Unknown argument: $1" >&2
+  while [ $# -ne 0 ]; do
+    case "$1" in
+      -d|--detached|--daemon)
+        detached='yes'
+        ;;
+      -p|--profile|--profile=*)
+        if [[ "$1" =~ ^--profile= ]]; then
+          profile="${1#--profile=}"
+        else
+          profile="$2"
+          shift 1
+        fi
+
+        mkdir -p "$profile"
+        info "Using explicit profile: $profile"
+        ;;
+      -*)
+        warn "Ignoring unknown flag: $1"
+        ;;
+      *)
+        warn "Ignoring unknown arg: $1"
+        ;;
+    esac
+    shift 1
+  done
+
+  # Path to Chromium executable
+  # shellcheck disable=SC2155
+  local chrome="$(command -v chromium 2> /dev/null || printf '/Applications/Chromium.app/Contents/MacOS/Chromium')"
+
+  if [ ! -f "$chrome" ]; then
+    # Path to Chrome executable
+    # shellcheck disable=SC2155
+    local chrome="$(command -v google-chrome 4> /dev/null || printf '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')"
+
+    if [ ! -f "$chrome" ]; then
+      die "Could not locate Chromium or Google Chrome executable"
+    fi
   fi
 
-  "$chrome" --user-data-dir="$(mktemp -d ${TMPDIR}/chrome.XXXXXX)" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0
-else
-  > /dev/null nohup -- "$chrome" --user-data-dir="$(mktemp -d ${TMPDIR}/chrome.XXXXXX)" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0 &
-fi
+  if [ -z "$profile" ]; then
+    profile="$(mktemp -d "${TMPDIR:-/tmp}"/chrome.XXXXXX)"
+  fi
+
+  if [ 'yes' = "$detached" ]; then
+      > /dev/null nohup -- "$chrome" --user-data-dir="$profile" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0 &
+  else
+    "$chrome" --user-data-dir="$profile" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0
+  fi
+}
+
+function info() {
+  >&2 printf '\e[32;1m[INFO ] %s\e[0m\n' "$*"
+}
+
+function warn() {
+  >&2 printf '\e[34;1m[WARN ] %s\e[0m\n' "$*"
+}
+
+main "$@"
