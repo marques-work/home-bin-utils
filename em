@@ -8,4 +8,11 @@ if ! command -v emacsclient &> /dev/null; then
   exit 1
 fi
 
-exec emacsclient -c "$@"
+case "$(basename "$0")" in
+  et)
+    exec emacsclient -t "$@"
+    ;;
+  *)
+    exec emacsclient -c "$@"
+    ;;
+esac
