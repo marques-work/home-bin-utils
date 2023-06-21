@@ -8,6 +8,8 @@ set -euo pipefail
 function main {
   local detached='no'
   local profile=''
+  local no_private=''
+  declare -a ffxargs=('--no-remote' '--foreground' '--purgecaches')
 
   while [ $# -ne 0 ]; do
     case "$1" in
@@ -22,6 +24,7 @@ function main {
           shift 1
         fi
 
+        no_private='y'
         mkdir -p "$profile"
         info "Using explicit profile: $profile"
         ;;
@@ -43,6 +46,12 @@ function main {
     profile="$(mktemp -d "${TMPDIR:-/tmp}"/firefox.XXXXXX)"
   fi
 
+  ffxargs+=('--profile' "$profile")
+
+  if [ -z "$no_private" ]; then
+    ffxargs+=('--private')
+  fi
+
   if [ ! -f "$profile/prefs.js" ]; then
     # turn off auto-update and default browser check
     cat <<-PREFS > "$profile/prefs.js"
@@ -53,9 +62,9 @@ PREFS
   fi
 
   if [ 'yes' = "$detached" ]; then
-    > /dev/null nohup -- "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches &
+    > /dev/null nohup -- "$firefox" ${ffxargs[@]+"${ffxargs[@]}"} &
   else
-    "$firefox" --profile "$profile" --no-remote --private --foreground --purgecaches
+    "$firefox" ${ffxargs[@]+"${ffxargs[@]}"}
   fi
 }
 
