@@ -8,6 +8,8 @@ set -euo pipefail
 function main {
   local detached='no'
   local profile=''
+  local no_private=''
+  declare -a cmdargs=('--no-default-browser-check' '--homepage=about:blank' '--no-first-run' '--window-position=0,0')
 
   while [ $# -ne 0 ]; do
     case "$1" in
@@ -22,6 +24,7 @@ function main {
           shift 1
         fi
 
+        no_private='y'
         mkdir -p "$profile"
         info "Using explicit profile: $profile"
         ;;
@@ -53,10 +56,16 @@ function main {
     profile="$(mktemp -d "${TMPDIR:-/tmp}"/chrome.XXXXXX)"
   fi
 
+  cmdargs+=("--user-data-dir=$profile")
+
+  if [ -z "$no_private" ]; then
+    cmdargs+=('--incognito')
+  fi
+
   if [ 'yes' = "$detached" ]; then
-      > /dev/null nohup -- "$chrome" --user-data-dir="$profile" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0 &
+    > /dev/null nohup -- "$chrome" ${cmdargs[@]+"${cmdargs[@]}"} &
   else
-    "$chrome" --user-data-dir="$profile" --no-default-browser-check --incognito --homepage=about:blank --no-first-run --window-position=0,0
+    "$chrome" ${cmdargs[@]+"${cmdargs[@]}"}
   fi
 }
 
