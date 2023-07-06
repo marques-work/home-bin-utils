@@ -1,0 +1,8 @@
+#!/bin/bash
+# vim: sts=2 sw=2 et ai
+
+set -euo pipefail
+
+for repo in */.git; do
+  git -C "$repo/.." pull || :;
+done
