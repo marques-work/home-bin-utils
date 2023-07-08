@@ -1,0 +1,36 @@
+#!/bin/bash
+# vim: sts=2 sw=2 et ai
+
+set -euo pipefail
+
+function warn() { >&2 printf '\e[35;1m[WARN ] %s\e[0m\n' "$*"; }
+
+function main() {
+  for f in "$@"; do
+    if [ ! -f "$f" ]; then
+      touch "$f"
+      git add -- "$f"
+    else
+      touch "$f"
+
+      local tracked='n'
+      local pending='n'
+
+      if [ -n "$(git ls-files -- "$f")" ]; then
+        tracked='y'
+      fi
+      
+      if ! git diff --exit-code -- "$f" > /dev/null; then
+        pending='y'
+      fi
+
+      if [ 'n' = "$tracked" ]; then
+        git add -- "$f"
+      elif [ 'y' = "$pending" ]; then
+        warn "$f is already tracked by git with pending changes; not going to \`git add\` so that you have a chance to review"
+      fi
+    fi
+  done
+}
+
+main "$@"
