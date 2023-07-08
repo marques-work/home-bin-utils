@@ -6,6 +6,10 @@ set -euo pipefail
 function warn() { >&2 printf '\e[35;1m[WARN ] %s\e[0m\n' "$*"; }
 
 function main() {
+  if [ $# -gt 0 ] && [ '--' = "$1" ]; then
+    shift 1
+  fi
+
   for f in "$@"; do
     if [ ! -f "$f" ]; then
       touch "$f"
