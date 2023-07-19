@@ -4,5 +4,6 @@
 set -euo pipefail
 
 for repo in */.git; do
-  git -C "$repo/.." pull || :;
+  >&2 printf '\e[32;1mUpdating: %s\e[0m\n' "${repo%/.git}"
+  git -C "${repo%/.git}" pull || :;
 done
