@@ -12,6 +12,13 @@ function main() {
 
   for f in "$@"; do
     if [ ! -f "$f" ]; then
+      local parent=''
+      parent="$(dirname "$f")"
+
+      if [ -n "$parent" ] && [ ! -d "$parent" ]; then
+        mkdir -p "$parent"
+      fi
+
       touch "$f"
       git add -- "$f"
     else
