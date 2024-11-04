@@ -1,0 +1,36 @@
+#!/bin/bash
+# vim: sts=2 sw=2 et ai
+
+set -euo pipefail
+
+main() {
+  local packages=("$@")
+
+  for package in "${packages[@]}"; do
+    info "Ensuring latest version of $package"
+
+    asdf plugin-add "$package" &>/dev/null || true
+    asdf install "$package" latest || true
+    asdf global "$package" latest || true
+
+    hash -r
+
+    local -a to_remove=()
+    read -r -a to_remove <<< "$(asdf list "$package" | grep -vF '*' | xargs)" || true
+
+    if [ "${#to_remove[@]}" -gt 0 ]; then
+      info "Removing ${#to_remove[@]} old versions of $package: ${to_remove[*]}"
+
+      for ver in "${to_remove[@]}"; do
+        info "Removing old package $package $ver"
+        asdf uninstall "$package" "$ver";
+      done
+    fi
+  done
+
+  info "done"
+}
+
+info() { >&2 printf '\e[32;1m[INFO ] %s\e[0m\n' "$*"; }
+
+main "$@"
