@@ -36,7 +36,6 @@ function main {
     usage "You must specify at least 1 application to inocculate"
   fi
 
-  exempt "$@"
   dequarantine "$@"
 
   if [ "yes" = "$launch" ]; then
@@ -44,20 +43,6 @@ function main {
   fi
 
   info "Happy hacking!"
-}
-
-function exempt {
-  info "Ensuring gatekeeper exception(s)"
-
-  for app in "$@"; do
-    spctl --remove "$app" || :
-    spctl --add --label Approved "$app"
-
-    info "  - $app"
-  done
-
-  spctl --enable --label Approved
-  info "Enabled."
 }
 
 function dequarantine {
